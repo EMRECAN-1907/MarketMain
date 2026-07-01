@@ -179,11 +179,16 @@
     -webkit-backdrop-filter:blur(2px);backdrop-filter:blur(2px)}
   .scrim.show{opacity:1;pointer-events:auto}
   .sheet{position:fixed;left:0;right:0;bottom:0;z-index:61;max-width:560px;margin:0 auto;
+    max-height:90vh;overflow-y:auto;
     background:var(--glass-strong);-webkit-backdrop-filter:saturate(180%) blur(30px);backdrop-filter:saturate(180%) blur(30px);
     border-radius:24px 24px 0 0;border-top:.5px solid rgba(255,255,255,.7);
     padding:8px 20px calc(20px + env(safe-area-inset-bottom));
     transform:translateY(110%);transition:transform .3s cubic-bezier(.32,.72,0,1);box-shadow:0 -10px 44px rgba(20,25,40,.24)}
   .sheet.show{transform:translateY(0)}
+  .json-box{width:100%;min-height:92px;max-height:32vh;margin:2px 0 12px;border:none;border-radius:14px;
+    background:var(--field);box-shadow:inset 0 0 0 .5px var(--hair);padding:12px 14px;font-size:12px;
+    font-family:ui-monospace,Menlo,monospace;color:var(--ink2);resize:none;outline:none;line-height:1.45;box-sizing:border-box}
+  .json-box:focus{box-shadow:inset 0 0 0 1.5px var(--blue)}
   .grab{width:38px;height:5px;border-radius:3px;background:var(--ink3);opacity:.5;margin:8px auto 16px}
   .sheet h3{font-size:21px;font-weight:800;margin:0 0 6px;letter-spacing:-.3px}
   .sheet p.hint{font-size:13px;color:var(--ink2);margin:0 0 18px;line-height:1.4}
@@ -306,6 +311,33 @@
   </div>
 </div>
 
+<div class="sheet" id="exportModal">
+  <div class="grab"></div>
+  <h3>Paylaş / Kopyala</h3>
+  <p class="hint">Metin panoya kopyalandı. <b>WhatsApp</b>'tan eşine yapıştırıp gönder; eşin de <b>JSON Yükle → Metni yapıştır</b> ile içe aktarsın. İstersen dosya olarak da indirebilirsin.</p>
+  <textarea id="exportOut" class="json-box" readonly></textarea>
+  <div class="sheet-btns">
+    <button class="btn btn-blue" id="copyJsonBtn">📋 Tekrar kopyala</button>
+    <button class="btn btn-ghost" id="dlJsonBtn">⬇︎ Dosya indir</button>
+    <button class="btn btn-ghost" id="exportModalClose">Kapat</button>
+  </div>
+</div>
+
+<div class="sheet" id="importSheet">
+  <div class="grab"></div>
+  <h3>JSON Yükle</h3>
+  <p class="hint">Paylaşılan dosyayı seç ya da kopyalanan JSON metnini yapıştır.</p>
+  <div class="sheet-btns">
+    <button class="btn btn-blue" id="pickFileBtn">📁 Dosya seç</button>
+    <button class="btn btn-ghost" id="pasteToggleBtn">📋 Metni yapıştır</button>
+  </div>
+  <textarea id="importText" class="json-box" placeholder="JSON metnini buraya yapıştır…" hidden></textarea>
+  <div class="sheet-btns">
+    <button class="btn btn-pri" id="loadTextBtn" hidden>Yükle</button>
+    <button class="btn btn-ghost" id="importSheetClose">Vazgeç</button>
+  </div>
+</div>
+
 <div class="toast" id="toast">Kaydedildi</div>
 
 <!-- PDF için html2pdf (CDN). Yüklenemezse onerror ile jsDelivr'e, o da olmazsa tarayıcı yazdırmasına düşülür. -->
@@ -417,7 +449,20 @@ function highlight(name, q){
 /* Öğrenilen ürünler: kullanıcının elle yazıp listede olmayanları hatırla */
 let learned=[]; try{ learned=JSON.parse(Store.get('sl_learned')||'[]')||[]; }catch(e){ learned=[]; }
 learned.forEach(p=>{ if(p&&p.name) ALL_PRODUCTS.push({name:p.name, cat:p.cat||null}); });
-function findCategory(name){ const n=norm(name); for(const p of ALL_PRODUCTS){ if(norm(p.name)===n) return p.cat; } return null; }
+function findCategory(name){
+  const n=norm(name); if(!n) return null;
+  // 1) tam eşleşme
+  for(const p of ALL_PRODUCTS){ if(norm(p.name)===n) return p.cat; }
+  // 2) kısmi: yazılan kelimeyi içeren ürünlerin en sık geçen kategorisi (çikolata→Atıştırmalık, ekmek→Fırın)
+  if(n.length>=3){
+    const tally={};
+    for(const p of ALL_PRODUCTS){ if(p.cat){ const pn=norm(p.name); if(pn.length>=3 && pn.includes(n)){ tally[p.cat]=(tally[p.cat]||0)+1; } } }
+    let best=null, bestN=0;
+    for(const c in tally){ if(tally[c]>bestN){ best=c; bestN=tally[c]; } }
+    if(best) return best;
+  }
+  return null;
+}
 function learn(name, cat){
   const n=norm(name);
   if(ALL_PRODUCTS.some(p=>norm(p.name)===n)) return;
@@ -589,7 +634,7 @@ completeBtn.onclick=()=>{
   openSheet();
 };
 document.getElementById('cancelBtn').onclick=closeSheet;
-scrim.onclick=()=>{ closeSheet(); closeExportSheet(); };
+scrim.onclick=()=>{ closeSheet(); closeExportSheet(); closeExportModal(); closeImportSheet(); };
 totalInput.addEventListener('keydown', e=>{ if(e.key==='Enter') document.getElementById('saveBtn').click(); });
 
 document.getElementById('saveBtn').onclick=()=>{
@@ -653,28 +698,32 @@ function loadTemplate(rec){
 /* ---------- JSON dışa/içe aktarma (yedek + eşle paylaşım) ---------- */
 const exportBtn=document.getElementById('exportBtn'), importBtn=document.getElementById('importBtn'), importFile=document.getElementById('importFile');
 
-function exportData(scope){
+async function exportData(scope){
   const data = (scope==='active')
     ? { app:'alisveris', version:1, type:'active', exportedAt:Date.now(), active }
     : { app:'alisveris', version:1, type:'full', exportedAt:Date.now(), active, history, learned };
-  const json=JSON.stringify(data, null, 2);
+  const json=JSON.stringify(data);
   const fname=(scope==='active'?'alisveris-liste-':'alisveris-yedek-')+new Date().toISOString().slice(0,10)+'.json';
   const label=(scope==='active'?'Aktif alışveriş listesi':'Alışveriş yedeği');
-  const blob=new Blob([json], {type:'application/json'});
-  try{
-    const file=new File([blob], fname, {type:'application/json'});
-    if(navigator.canShare && navigator.canShare({files:[file]})){
-      navigator.share({ files:[file], title:label, text:label+' (JSON)' }).catch(()=>{});
-      return;
-    }
-  }catch(e){}
-  // yedek: indir
-  const url=URL.createObjectURL(blob);
-  const a=document.createElement('a'); a.href=url; a.download=fname;
-  document.body.appendChild(a); a.click(); a.remove();
-  setTimeout(()=>URL.revokeObjectURL(url), 1500);
-  showToast('JSON dosyası indirildi');
+  // 1) Cihaz dosya paylaşımını destekliyorsa onu kullan (en temiz yol)
+  if(navigator.canShare){
+    try{
+      const file=new File([json], fname, {type:'application/json'});
+      if(navigator.canShare({files:[file]})){
+        await navigator.share({ files:[file], title:label });
+        return;
+      }
+    }catch(e){ if(e && e.name==='AbortError') return; }
+  }
+  // 2) Olmazsa: panoya kopyala + pencerede göster (indir / manuel kopya)
+  showExportModal(json, fname);
 }
+function showExportModal(json, fname){
+  exportOut.value=json; exportModal.dataset.fname=fname;
+  scrim.classList.add('show'); exportModal.classList.add('show');
+  try{ navigator.clipboard.writeText(json).then(()=>showToast('Panoya kopyalandı ✓')).catch(()=>{}); }catch(e){}
+}
+function closeExportModal(){ scrim.classList.remove('show'); exportModal.classList.remove('show'); }
 
 function applyImport(data){
   if(!data || typeof data!=='object' || (data.app && data.app!=='alisveris')){ showToast('Geçersiz dosya'); return; }
@@ -711,18 +760,43 @@ function applyImport(data){
 }
 
 const exportSheet=document.getElementById('exportSheet');
+const exportModal=document.getElementById('exportModal'), exportOut=document.getElementById('exportOut');
+const importSheet=document.getElementById('importSheet'), importText=document.getElementById('importText'), loadTextBtn=document.getElementById('loadTextBtn');
+
 function openExportSheet(){ scrim.classList.add('show'); exportSheet.classList.add('show'); }
 function closeExportSheet(){ scrim.classList.remove('show'); exportSheet.classList.remove('show'); }
+function openImportSheet(){ importText.hidden=true; importText.value=''; loadTextBtn.hidden=true; scrim.classList.add('show'); importSheet.classList.add('show'); }
+function closeImportSheet(){ scrim.classList.remove('show'); importSheet.classList.remove('show'); }
+
 exportBtn.onclick=openExportSheet;
 document.getElementById('expActive').onclick=()=>{ closeExportSheet(); exportData('active'); };
 document.getElementById('expAll').onclick=()=>{ closeExportSheet(); exportData('all'); };
 document.getElementById('expCancel').onclick=closeExportSheet;
-importBtn.onclick=()=>importFile.click();
+
+document.getElementById('copyJsonBtn').onclick=async()=>{
+  try{ await navigator.clipboard.writeText(exportOut.value); showToast('Panoya kopyalandı ✓'); }
+  catch(e){ exportOut.removeAttribute('readonly'); exportOut.focus(); exportOut.select(); try{document.execCommand('copy');}catch(_){} exportOut.setAttribute('readonly',''); showToast('Kopyalandı'); }
+};
+document.getElementById('dlJsonBtn').onclick=()=>{
+  const blob=new Blob([exportOut.value],{type:'application/json'});
+  const url=URL.createObjectURL(blob); const a=document.createElement('a');
+  a.href=url; a.download=exportModal.dataset.fname||'alisveris.json';
+  document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(url),1500);
+  showToast('İndirildi');
+};
+document.getElementById('exportModalClose').onclick=closeExportModal;
+
+importBtn.onclick=openImportSheet;
+document.getElementById('pickFileBtn').onclick=()=>importFile.click();
+document.getElementById('pasteToggleBtn').onclick=()=>{ importText.hidden=false; loadTextBtn.hidden=false; importText.focus(); };
+loadTextBtn.onclick=()=>{ try{ const d=JSON.parse(importText.value); closeImportSheet(); applyImport(d); }catch(e){ showToast('Geçersiz JSON metni'); } };
+document.getElementById('importSheetClose').onclick=closeImportSheet;
+
 importFile.onchange=()=>{
   const f=importFile.files && importFile.files[0];
   if(!f){ return; }
   const reader=new FileReader();
-  reader.onload=()=>{ try{ applyImport(JSON.parse(reader.result)); }catch(e){ showToast('Geçersiz JSON dosyası'); } importFile.value=''; };
+  reader.onload=()=>{ try{ const d=JSON.parse(reader.result); closeImportSheet(); applyImport(d); }catch(e){ showToast('Geçersiz JSON dosyası'); } importFile.value=''; };
   reader.onerror=()=>{ showToast('Dosya okunamadı'); importFile.value=''; };
   reader.readAsText(f);
 };

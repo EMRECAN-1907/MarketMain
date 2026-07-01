@@ -2,7 +2,7 @@
    Strateji: cache-first. İlk açılıştan sonra uygulama çevrimdışı çalışır.
    Uygulamayı güncellediğinde sürümü artır (v1 -> v2). */
 
-const CACHE = 'alisveris-v6';
+const CACHE = 'alisveris-v7';
 const ASSETS = [
   './',
   './index.html',
