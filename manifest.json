@@ -1,0 +1,17 @@
+{
+  "name": "Akıllı Alışveriş Listesi",
+  "short_name": "Alışveriş",
+  "description": "Mobil uyumlu akilli alisveris listesi. Urunleri ekle, aldikca isaretle, gecmisi yerel olarak sakla, PDF al.",
+  "id": "./",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#EDF2F7",
+  "theme_color": "#EDF2F7",
+  "categories": ["shopping", "productivity", "lifestyle"],
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}

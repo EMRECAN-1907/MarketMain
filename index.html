@@ -1,0 +1,799 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Akıllı Alışveriş Listesi</title>
+
+<!-- PWA -->
+<link rel="manifest" href="manifest.json">
+<meta name="color-scheme" content="light">
+<meta name="theme-color" content="#EDF2F7">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Alışveriş">
+<meta name="mobile-web-app-capable" content="yes">
+<link rel="icon" type="image/svg+xml" href="icon.svg">
+<link rel="icon" type="image/png" sizes="48x48" href="icon-48.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+
+<style>
+  :root{
+    color-scheme: light;
+    --blue:#007AFF; --green:#34C759; --red:#FF3B30; --orange:#FF9500; --indigo:#5856D6;
+    --mkk:#D31122;
+    --ink:#1C1C1E; --ink2:#5b5b61; --ink3:#9a9aa2; --hair:rgba(60,60,67,.13);
+    --glass:rgba(255,255,255,.62); --glass-strong:rgba(255,255,255,.82);
+    --field:rgba(255,255,255,.7);
+    --radius:20px;
+    --shadow:0 1px 2px rgba(0,0,0,.04),0 10px 30px rgba(30,40,80,.08);
+    --shadow-lg:0 8px 40px rgba(30,40,80,.16);
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;padding:0;height:100%}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","SF Pro Display","Helvetica Neue",system-ui,sans-serif;
+    color:var(--ink);-webkit-font-smoothing:antialiased;min-height:100dvh;
+    background:
+      radial-gradient(1100px 780px at 8% -5%, rgba(88,86,214,.18), transparent 60%),
+      radial-gradient(1000px 720px at 105% 8%, rgba(0,122,255,.16), transparent 55%),
+      radial-gradient(950px 760px at 50% 108%, rgba(52,199,89,.16), transparent 60%),
+      linear-gradient(180deg,#EEF1F7,#E7EBF3);
+    background-attachment:fixed;
+  }
+  .app{max-width:560px;margin:0 auto;min-height:100dvh;display:flex;flex-direction:column;
+    padding:env(safe-area-inset-top) 14px calc(12px + env(safe-area-inset-bottom))}
+
+  /* Üst başlık + segment */
+  .topbar{position:sticky;top:0;z-index:20;padding-top:8px;
+    background:linear-gradient(180deg, rgba(238,241,247,.9), rgba(238,241,247,.5) 70%, transparent);
+    -webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px)}
+  .brand{display:flex;align-items:center;gap:10px;padding:6px 4px 10px}
+  .brand .mark{width:34px;height:34px;border-radius:10px;background:linear-gradient(135deg,#34C759,#248A3D);
+    display:flex;align-items:center;justify-content:center;box-shadow:0 3px 10px rgba(36,138,61,.4)}
+  .brand .mark svg{width:20px;height:20px;fill:none;stroke:#fff;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round}
+  .brand h1{font-size:20px;font-weight:800;letter-spacing:-.4px;margin:0}
+  .brand .sub{font-size:11px;color:var(--ink2);margin-top:1px}
+
+  .seg{display:flex;gap:4px;background:rgba(120,120,128,.12);border-radius:13px;padding:4px;margin:0 0 12px;
+    -webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}
+  .seg button{flex:1;border:none;background:transparent;padding:10px;border-radius:10px;font-size:15px;font-weight:600;
+    color:var(--ink2);cursor:pointer;font-family:inherit;transition:.18s}
+  .seg button.on{background:rgba(255,255,255,.95);color:var(--ink);box-shadow:0 1px 4px rgba(0,0,0,.12)}
+
+  main{flex:1;padding-bottom:8px}
+
+  /* Cam kart */
+  .glass{background:var(--glass);-webkit-backdrop-filter:saturate(180%) blur(22px);backdrop-filter:saturate(180%) blur(22px);
+    border:.5px solid rgba(255,255,255,.6);border-radius:var(--radius);box-shadow:var(--shadow)}
+
+  /* Liste adı + ekleme */
+  .list-head{display:flex;align-items:center;gap:8px;padding:2px 2px 8px}
+  .listname{flex:1;min-width:0;border:none;background:transparent;font-size:22px;font-weight:800;letter-spacing:-.4px;
+    color:var(--ink);padding:4px;outline:none}
+  .listname::placeholder{color:var(--ink3);font-weight:700}
+  .new-list{flex-shrink:0;border:none;background:rgba(0,122,255,.12);color:var(--blue);font-family:inherit;
+    font-size:13px;font-weight:700;padding:10px 14px;border-radius:12px;cursor:pointer;white-space:nowrap;transition:transform .1s}
+  .new-list:active{transform:scale(.94)}
+
+  .add-wrap{position:relative;margin-bottom:12px}
+  .cat-select{width:100%;margin-bottom:9px;border:none;border-radius:14px;background:var(--field);
+    padding:12px 40px 12px 14px;font-size:15px;font-weight:600;font-family:inherit;color:var(--ink);
+    outline:none;box-shadow:inset 0 0 0 .5px var(--hair);cursor:pointer;-webkit-appearance:none;appearance:none;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%239a9aa2' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat:no-repeat;background-position:right 14px center}
+  .cat-select:focus{box-shadow:inset 0 0 0 1.5px var(--blue)}
+  .addrow{display:flex;gap:9px;padding:10px;margin-bottom:0}
+  .addrow input{flex:1;border:none;background:var(--field);border-radius:14px;padding:14px 16px;font-size:16px;
+    font-family:inherit;color:var(--ink);outline:none;box-shadow:inset 0 0 0 .5px var(--hair)}
+  .addrow input:focus{box-shadow:inset 0 0 0 1.5px var(--blue)}
+  .addrow button{flex-shrink:0;width:52px;border:none;border-radius:14px;background:var(--blue);color:#fff;
+    font-size:26px;font-weight:400;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:transform .1s}
+  .addrow button:active{transform:scale(.93)}
+  .suggest{position:absolute;top:100%;left:0;right:0;margin-top:6px;z-index:26;padding:6px;
+    max-height:46vh;overflow-y:auto;box-shadow:var(--shadow-lg)}
+  .sug{padding:13px 12px;border-radius:12px;cursor:pointer;font-size:15.5px;color:var(--ink);line-height:1.3}
+  .sug:active{background:rgba(0,122,255,.1)}
+  .sug + .sug{border-top:.5px solid var(--hair)}
+  .sug b{color:var(--blue);font-weight:700}
+
+  .meta-row{display:flex;align-items:center;justify-content:space-between;padding:0 6px 8px;min-height:22px}
+  .progress{font-size:13px;font-weight:600;color:var(--ink2)}
+  .progress b{color:var(--green)}
+  .clear-btn{border:none;background:none;color:var(--red);font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;padding:4px}
+
+  /* Ürün listesi */
+  .groups{display:flex;flex-direction:column;gap:16px}
+  .group-head{display:flex;align-items:center;justify-content:space-between;padding:2px 8px 6px;font-size:13px;font-weight:700;color:var(--ink2)}
+  .group-count{font-size:12px;font-weight:600;color:var(--ink3);background:rgba(120,120,128,.12);padding:2px 9px;border-radius:20px}
+  .items{list-style:none;margin:0;padding:6px;display:flex;flex-direction:column;gap:2px}
+  .item{display:flex;align-items:center;gap:4px;padding:10px;border-radius:14px;transition:background .15s}
+  .item + .item{border-top:.5px solid var(--hair)}
+  .row-main{flex:1;display:flex;align-items:center;gap:12px;min-width:0;cursor:pointer;padding:2px 2px 2px 0;border-radius:10px}
+  .row-main:active{background:rgba(120,120,128,.1)}
+  .chk{flex-shrink:0;width:28px;height:28px;border-radius:50%;border:2px solid var(--ink3);
+    display:flex;align-items:center;justify-content:center;transition:.15s;background:transparent}
+  .chk svg{width:16px;height:16px;fill:none;stroke:#fff;stroke-width:3;stroke-linecap:round;stroke-linejoin:round;opacity:0}
+  .item.done .chk{background:var(--green);border-color:var(--green)}
+  .item.done .chk svg{opacity:1}
+  .item .name{flex:1;font-size:16px;color:var(--ink);word-break:break-word;line-height:1.3}
+  .item.done .name{text-decoration:line-through;color:var(--ink3)}
+  .name-edit{flex:1;font-size:16px;border:none;background:rgba(0,122,255,.08);border-radius:8px;padding:6px 8px;
+    font-family:inherit;color:var(--ink);outline:none;box-shadow:inset 0 0 0 1.5px var(--blue)}
+  .item .edit,.item .del{flex-shrink:0;border:none;background:none;color:var(--ink3);cursor:pointer;padding:7px;display:flex;transition:color .15s}
+  .item .edit:active{color:var(--blue)}
+  .item .del:active{color:var(--red)}
+  .item .edit svg,.item .del svg{width:19px;height:19px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+
+  .empty{text-align:center;color:var(--ink2);padding:52px 24px}
+  .empty .ic{font-size:44px;margin-bottom:10px}
+  .empty h2{font-size:18px;font-weight:700;color:var(--ink);margin:0 0 6px}
+  .empty p{font-size:14px;margin:0;line-height:1.45}
+
+  /* Alt tamamla butonu */
+  .footer{position:sticky;bottom:0;z-index:20;padding:12px 0 calc(6px + env(safe-area-inset-bottom));
+    background:linear-gradient(0deg, rgba(231,235,243,.96) 60%, transparent)}
+  .btn{width:100%;border:none;border-radius:16px;padding:17px;font-size:17px;font-weight:700;cursor:pointer;
+    font-family:inherit;transition:transform .1s,opacity .15s;display:flex;align-items:center;justify-content:center;gap:8px}
+  .btn:active{transform:scale(.985)}
+  .btn:disabled{opacity:.45;cursor:not-allowed}
+  .btn-pri{background:var(--green);color:#fff;box-shadow:0 6px 18px rgba(52,199,89,.36)}
+  .btn-blue{background:var(--blue);color:#fff}
+  .btn-ghost{background:rgba(120,120,128,.14);color:var(--ink)}
+  .btn svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+  .footer-row{display:flex;gap:10px;align-items:stretch}
+  .btn-wa{flex-shrink:0;width:58px;padding:0;background:#25D366;color:#fff}
+  .btn-wa svg{width:24px;height:24px;fill:currentColor;stroke:none}
+
+  /* Geçmiş kartları */
+  .data-bar{display:flex;gap:9px;margin-bottom:14px}
+  .data-bar button{flex:1;border:none;border-radius:14px;padding:13px 10px;font-size:14px;font-weight:600;cursor:pointer;
+    font-family:inherit;display:flex;align-items:center;justify-content:center;gap:6px;transition:transform .1s}
+  .data-bar button:active{transform:scale(.96)}
+  .data-export{background:rgba(0,122,255,.12);color:var(--blue)}
+  .data-import{background:rgba(52,199,89,.16);color:#0f9d43}
+  .hist{display:flex;flex-direction:column;gap:14px}
+  .rec{padding:16px}
+  .rec-top{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:10px}
+  .rec-date{font-size:15px;font-weight:700;color:var(--ink)}
+  .rec-title{font-size:13px;color:var(--indigo);font-weight:600;margin-top:2px}
+  .rec-total{flex-shrink:0;font-size:16px;font-weight:800;color:var(--green);white-space:nowrap}
+  .rec-total.none{color:var(--ink3);font-weight:600;font-size:13px}
+  .rec-items{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px}
+  .tag{font-size:13px;padding:5px 11px;border-radius:20px;background:rgba(120,120,128,.1);color:var(--ink)}
+  .tag.done{background:rgba(52,199,89,.14);color:#1f8f3f;text-decoration:line-through}
+  .rec-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .rec-actions button{border:none;border-radius:12px;padding:11px 8px;font-size:13.5px;font-weight:600;cursor:pointer;
+    font-family:inherit;display:flex;align-items:center;justify-content:center;gap:5px;transition:transform .1s}
+  .rec-actions button:active{transform:scale(.95)}
+  .act-load{background:rgba(0,122,255,.12);color:var(--blue)}
+  .act-share{background:rgba(37,211,102,.16);color:#0f9d43}
+  .act-pdf{background:rgba(88,86,214,.12);color:var(--indigo)}
+  .act-del{background:rgba(255,59,48,.1);color:var(--red)}
+  .rec-actions svg{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+  .rec-actions .act-share svg{fill:currentColor;stroke:none;width:16px;height:16px}
+  .rec-count{font-size:12px;color:var(--ink3);margin-bottom:10px}
+
+  /* Sheet + scrim */
+  .scrim{position:fixed;inset:0;background:rgba(20,25,40,.4);opacity:0;pointer-events:none;transition:.25s;z-index:60;
+    -webkit-backdrop-filter:blur(2px);backdrop-filter:blur(2px)}
+  .scrim.show{opacity:1;pointer-events:auto}
+  .sheet{position:fixed;left:0;right:0;bottom:0;z-index:61;max-width:560px;margin:0 auto;
+    background:var(--glass-strong);-webkit-backdrop-filter:saturate(180%) blur(30px);backdrop-filter:saturate(180%) blur(30px);
+    border-radius:24px 24px 0 0;border-top:.5px solid rgba(255,255,255,.7);
+    padding:8px 20px calc(20px + env(safe-area-inset-bottom));
+    transform:translateY(110%);transition:transform .3s cubic-bezier(.32,.72,0,1);box-shadow:0 -10px 44px rgba(20,25,40,.24)}
+  .sheet.show{transform:translateY(0)}
+  .grab{width:38px;height:5px;border-radius:3px;background:var(--ink3);opacity:.5;margin:8px auto 16px}
+  .sheet h3{font-size:21px;font-weight:800;margin:0 0 6px;letter-spacing:-.3px}
+  .sheet p.hint{font-size:13px;color:var(--ink2);margin:0 0 18px;line-height:1.4}
+  .price-wrap{position:relative;margin-bottom:8px}
+  .price-wrap input{width:100%;border:none;background:var(--field);border-radius:14px;padding:16px 16px 16px 44px;
+    font-size:20px;font-weight:600;font-family:inherit;color:var(--ink);outline:none;box-shadow:inset 0 0 0 .5px var(--hair)}
+  .price-wrap input:focus{box-shadow:inset 0 0 0 1.5px var(--green)}
+  .price-wrap .cur{position:absolute;left:18px;top:50%;transform:translateY(-50%);font-size:19px;font-weight:700;color:var(--ink3)}
+  .opt{font-size:12px;color:var(--ink3);margin:0 2px 18px}
+  .sheet-btns{display:flex;flex-direction:column;gap:9px}
+
+  .toast{position:fixed;left:50%;bottom:calc(28px + env(safe-area-inset-bottom));transform:translateX(-50%) translateY(12px);opacity:0;
+    background:rgba(28,28,30,.94);color:#fff;padding:12px 22px;border-radius:15px;font-size:14px;font-weight:600;
+    pointer-events:none;transition:.22s;z-index:80;-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);
+    box-shadow:0 8px 30px rgba(0,0,0,.3)}
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+  [hidden]{display:none!important}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="topbar">
+    <div class="brand">
+      <span class="mark"><svg viewBox="0 0 24 24"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><path d="M3 6h18"/><path d="M16 10a4 4 0 0 1-8 0"/></svg></span>
+      <div>
+        <h1>Alışveriş</h1>
+        <div class="sub">Akıllı liste · yerel kayıt</div>
+      </div>
+    </div>
+    <div class="seg">
+      <button class="on" id="tabList">Aktif Liste</button>
+      <button id="tabHist">Geçmiş</button>
+    </div>
+  </div>
+
+  <main>
+    <!-- AKTİF LİSTE -->
+    <section id="viewList">
+      <div class="list-head">
+        <input class="listname" id="listName" placeholder="Liste adı (isteğe bağlı)" autocapitalize="sentences" maxlength="60">
+        <button class="new-list" id="newListBtn">＋ Yeni Liste</button>
+      </div>
+      <div class="add-wrap">
+        <select id="catSelect" class="cat-select" aria-label="Ürün tipi (isteğe bağlı)">
+          <option value="">Tüm kategoriler</option>
+        </select>
+        <div class="addrow glass">
+          <input id="itemInput" placeholder="Ürün ekle…" autocapitalize="sentences" enterkeyhint="done" autocomplete="off">
+          <button id="addBtn" aria-label="Ekle">+</button>
+        </div>
+        <div class="suggest glass" id="suggest" hidden></div>
+      </div>
+      <div class="meta-row">
+        <span class="progress" id="progress"></span>
+        <button class="clear-btn" id="clearBtn" hidden>Listeyi temizle</button>
+      </div>
+      <div class="groups" id="itemList"></div>
+      <div id="listEmpty" class="empty">
+        <div class="ic">🛒</div>
+        <h2>Liste boş</h2>
+        <p>Yukarıdan ürün ekleyerek başla.<br>Aldıkça yanındaki daireye dokunup işaretle.</p>
+      </div>
+    </section>
+
+    <!-- GEÇMİŞ -->
+    <section id="viewHist" hidden>
+      <div class="data-bar">
+        <button class="data-export" id="exportBtn">📤 JSON Paylaş</button>
+        <button class="data-import" id="importBtn">📥 JSON Yükle</button>
+      </div>
+      <div class="hist" id="histList"></div>
+      <div id="histEmpty" class="empty">
+        <div class="ic">🧾</div>
+        <h2>Henüz kayıt yok</h2>
+        <p>Bir alışverişi tamamladığında burada saklanır.<br>Ya da <b>JSON Yükle</b> ile paylaşılan bir yedeği içe aktar.</p>
+      </div>
+    </section>
+    <input type="file" id="importFile" accept="application/json,.json" hidden>
+  </main>
+
+  <div class="footer" id="footer">
+    <div class="footer-row">
+      <button class="btn btn-wa" id="shareActiveBtn" aria-label="WhatsApp'ta paylaş">
+        <svg viewBox="0 0 24 24"><path d="M12.04 2c-5.46 0-9.91 4.45-9.91 9.91 0 1.75.46 3.45 1.32 4.95L2 22l5.25-1.38c1.45.79 3.08 1.21 4.79 1.21h.01c5.46 0 9.91-4.45 9.91-9.91 0-2.65-1.03-5.14-2.91-7.01A9.82 9.82 0 0 0 12.04 2zm5.8 14.01c-.24.68-1.42 1.32-1.96 1.36-.5.06-1.14.08-1.84-.11-.42-.13-.97-.31-1.67-.61-2.94-1.27-4.86-4.23-5.01-4.43-.14-.2-1.19-1.58-1.19-3.01 0-1.44.75-2.14 1.02-2.44.27-.3.59-.37.79-.37h.56c.18 0 .42-.07.66.5.24.6.83 2.06.9 2.21.07.15.12.32.02.52-.1.2-.15.32-.3.5-.15.18-.31.4-.45.53-.15.15-.3.31-.13.61.17.3.77 1.27 1.66 2.06 1.14 1.02 2.1 1.34 2.4 1.49.3.15.47.13.65-.07.18-.2.75-.87.95-1.17.2-.3.4-.25.66-.15.27.1 1.72.81 2.01.96.3.15.5.22.57.35.07.13.07.72-.17 1.4z"/></svg>
+      </button>
+      <button class="btn btn-pri" id="completeBtn" style="flex:1">
+        <svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg>
+        Alışverişi Tamamla
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Tamamlama paneli -->
+<div class="scrim" id="scrim"></div>
+<div class="sheet" id="sheet">
+  <div class="grab"></div>
+  <h3>Alışverişi Kaydet</h3>
+  <p class="hint">İstersen toplam tutarı gir, istemezsen boş bırak. Liste geçmişe bugünün tarihiyle kaydedilir.</p>
+  <div class="price-wrap">
+    <span class="cur">₺</span>
+    <input id="totalInput" inputmode="decimal" placeholder="0,00" enterkeyhint="done">
+  </div>
+  <p class="opt">Toplam tutar zorunlu değildir.</p>
+  <div class="sheet-btns">
+    <button class="btn btn-pri" id="saveBtn">Kaydet</button>
+    <button class="btn btn-ghost" id="cancelBtn">Vazgeç</button>
+  </div>
+</div>
+
+<div class="sheet" id="exportSheet">
+  <div class="grab"></div>
+  <h3>Neyi paylaşayım?</h3>
+  <p class="hint">Seçtiğini JSON dosyası olarak paylaşırsın; karşı taraf "JSON Yükle" ile içe aktarır.</p>
+  <div class="sheet-btns">
+    <button class="btn btn-blue" id="expActive">📋 Sadece aktif liste</button>
+    <button class="btn btn-ghost" id="expAll">💾 Tüm veri (geçmiş + öğrenilenler)</button>
+    <button class="btn btn-ghost" id="expCancel">Vazgeç</button>
+  </div>
+</div>
+
+<div class="toast" id="toast">Kaydedildi</div>
+
+<!-- PDF için html2pdf (CDN). Yüklenemezse onerror ile jsDelivr'e, o da olmazsa tarayıcı yazdırmasına düşülür. -->
+<script>
+function loadPdfFallback(){
+  var s=document.createElement('script');
+  s.src='https://cdn.jsdelivr.net/npm/html2pdf.js@0.10.1/dist/html2pdf.bundle.min.js';
+  document.head.appendChild(s);
+}
+</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js" onerror="loadPdfFallback()"></script>
+
+<script>
+"use strict";
+
+/* ---------- Kalıcı depolama (telefonda localStorage; önizlemede belleğe düşer) ---------- */
+const Store = {
+  _m:{},
+  get(k){ try{ return localStorage.getItem(k); }catch(e){ return this._m[k] ?? null; } },
+  set(k,v){ try{ localStorage.setItem(k,v); }catch(e){ this._m[k]=v; } }
+};
+const K_ACTIVE='sl_active', K_HIST='sl_history';
+const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,7);
+const pad2=n=>String(n).padStart(2,'0');
+function generateListName(){
+  const d=new Date();
+  return `${pad2(d.getDate())}.${pad2(d.getMonth()+1)}.${d.getFullYear()}_${pad2(d.getHours())}_${pad2(d.getMinutes())}_${pad2(d.getSeconds())}`;
+}
+/* WhatsApp için düz metin oluştur */
+function buildShareText(o){
+  const lines=[];
+  lines.push('🛒 '+((o.title||'').trim() || 'Alışveriş Listesi'));
+  if(o.date) lines.push('📅 '+fmtDate(o.date));
+  const groups=groupItems(o.items);
+  const single = groups.length===1 && groups[0].key==='__other__';
+  groups.forEach(g=>{
+    lines.push('');
+    if(!single) lines.push(g.icon+' '+g.label.toLocaleUpperCase('tr'));
+    g.items.forEach(i=>lines.push((i.checked?'✅':'⬜')+' '+i.name));
+  });
+  const done=o.items.filter(i=>i.checked).length;
+  lines.push('');
+  lines.push('— '+done+'/'+o.items.length+' alındı');
+  const money=(o.total!==undefined)?fmtMoney(o.total):null;
+  if(money) lines.push('💰 Toplam: '+money);
+  return lines.join('\n');
+}
+function shareWhatsApp(text){
+  const url='https://wa.me/?text='+encodeURIComponent(text);
+  const w=window.open(url,'_blank');
+  if(!w){
+    if(navigator.share){ navigator.share({text}).catch(()=>{}); }
+    else if(navigator.clipboard){ navigator.clipboard.writeText(text); showToast('Liste panoya kopyalandı'); }
+    else showToast('Paylaşım açılamadı');
+  }
+}
+
+/* ---------- Durum ---------- */
+let active = load(K_ACTIVE, {title:'', items:[]});
+let history = load(K_HIST, []);
+function load(k, def){ try{ const v=JSON.parse(Store.get(k)); return v||def; }catch(e){ return def; } }
+function saveActive(){ Store.set(K_ACTIVE, JSON.stringify(active)); }
+function saveHist(){ Store.set(K_HIST, JSON.stringify(history)); }
+
+/* ---------- Yardımcılar ---------- */
+function esc(s){ return String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+function fmtDate(ts){
+  try{ return new Date(ts).toLocaleString('tr-TR',{day:'numeric',month:'long',year:'numeric',hour:'2-digit',minute:'2-digit'}); }
+  catch(e){ return new Date(ts).toLocaleString(); }
+}
+function fmtMoney(n){
+  if(n===null||n===undefined||isNaN(n)) return null;
+  return n.toLocaleString('tr-TR',{minimumFractionDigits:2,maximumFractionDigits:2})+' ₺';
+}
+function parseMoney(str){
+  if(!str) return null;
+  str=String(str).trim().replace(/[^0-9.,]/g,'');
+  if(str==='') return null;
+  if(str.includes(',')){ str=str.replace(/\./g,'').replace(',', '.'); } // virgül ondalık, nokta binlik
+  // virgül yoksa noktayı ondalık kabul et (olduğu gibi bırak)
+  const n=parseFloat(str);
+  return isNaN(n)?null:n;
+}
+
+/* ---------- Ürün öneri veritabanı (kategorilere göre) ---------- */
+const PRODUCTS = {
+  "Kahvaltılık & Şarküteri":["Beyaz peynir","Kaşar peyniri","Tulum peyniri","Krem peynir","Siyah zeytin","Yeşil zeytin","Yumurta","Tereyağı","Kaymak","Sucuk","Sosis","Salam","Pastırma","Siyah dökme çay","Siyah sallama çay","Demlik poşet çay","Yeşil sallama çay","Meyve çayı","Ihlamur","Tahin","Pekmez","Çiçek balı","Çam balı","Çilek reçeli","Vişne reçeli","Sürülebilir çikolata","Fıstık ezmesi"],
+  "Temel Gıda & Bakliyat":["Sıvı ayçiçek yağı","Zeytinyağı","Un","Toz şeker","Küp şeker","İnce tuz","Kalın tuz","Baldo pirinç","Osmancık pirinç","Pilavlık bulgur","Köftelik bulgur","Kırmızı mercimek","Yeşil mercimek","Nohut","Kuru fasulye","Barbunya","Domates salçası","Biber salçası","Burgu makarna","Spagetti","Arpa şehriye","Tel şehriye","Tarhana","Hazır çorba"],
+  "Et & Süt Ürünleri":["Kutu süt","Günlük şişe süt","Kase yoğurt","Süzme yoğurt","Meyveli yoğurt","Ayran","Kefir","Dana kıyma","Dana kuşbaşı","Bütün tavuk","Tavuk göğsü","Tavuk kanat"],
+  "Manav":["Domates","Salkım domates","Salatalık","Sivri biber","Çarliston biber","Kapya biber","Kuru soğan","Kırmızı soğan","Patates","Limon","Sarımsak","Havuç","Kabak","Patlıcan","Elma","Muz","Mandalina","Portakal","Armut","Maydanoz","Nane","Dereotu","Kıvırcık marul","Roka","Taze soğan"],
+  "Fırın & Pastane":["Somun ekmek","Kepekli ekmek","Tam buğday ekmeği","Tost ekmeği","Yufka","Lavaş","Simit","Poğaça","Galeta"],
+  "Atıştırmalık & Kuruyemiş":["Ay çekirdeği","Kabak çekirdeği","Karışık kuruyemiş","Ceviz içi","Fındık","Pötibör bisküvi","Yulaflı bisküvi","Bebe bisküvisi","Süt dilimi","Sütlü çikolata","Bitter çikolata","Gofret","Patates cipsi","Meyveli kek"],
+  "İçecekler":["Maden suyu","Meyve suyu","Kola","Gazoz","Soğuk çay","Limonata","Filtre kahve","Türk kahvesi"],
+  "Baharat & Bitki Çayları":["Adaçayı","Rezene","Kuşburnu","Papatya çayı","Melisa çayı","Kış çayı","Ihlamur (Yaprak/Çiçek dökme)","Karabiber","Pul biber","İsot","Kuru nane","Kekik","Kimyon","Sumak","Toz kırmızı biber","Tarçın","Karanfil","Zerdeçal","Zencefil","Hindistan cevizi","Çörek otu","Susam","Karbonat","Kabartma tozu","Vanilya"],
+  "Temizlik":["Tuvalet kağıdı","Kağıt havlu","Peçete","Islak mendil","Toz çamaşır deterjanı","Sıvı çamaşır deterjanı","Çamaşır yumuşatıcısı","Elde bulaşık deterjanı","Bulaşık makinesi tableti","Bulaşık makinesi tuzu","Bulaşık makinesi parlatıcısı","Çamaşır suyu","Yüzey temizleyici","Cam silici","Yağ çözücü","Kireç çözücü","Bulaşık süngeri","Temizlik bezi","Çöp poşeti","Buzdolabı poşeti"],
+  "Kişisel Bakım & Kozmetik":["Sıvı sabun","Katı sabun","Şampuan","Çocuk şampuanı","Saç kremi","Duş jeli","Diş macunu","Diş fırçası","Tıraş köpüğü","Tıraş bıçağı","Kulak pamuğu","Makyaj temizleme pamuğu","Deodorant"],
+  "Mutfak & Pişirme":["Alüminyum folyo","Streç film","Pişirme kağıdı","Yağlı kağıt","Fırın poşeti","Kilitli saklama poşeti","Kürdan","Kağıt bardak","Kağıt tabak","Plastik çatal-kaşık","Pipet","Kek kapsülü","Mum","Kibrit","Çakmak"]
+};
+const ALL_PRODUCTS=[];
+Object.keys(PRODUCTS).forEach(cat=>PRODUCTS[cat].forEach(name=>ALL_PRODUCTS.push({name,cat})));
+/* Türkçe aksan/büyük-küçük duyarsız (uzunluğu korur → vurgulama indeksleri bozulmaz) */
+function norm(s){ return s.toLocaleLowerCase('tr').replace(/ç/g,'c').replace(/ğ/g,'g').replace(/ı/g,'i').replace(/ö/g,'o').replace(/ş/g,'s').replace(/ü/g,'u'); }
+function highlight(name, q){
+  const i=norm(name).indexOf(norm(q));
+  if(i<0) return esc(name);
+  return esc(name.slice(0,i))+'<b>'+esc(name.slice(i,i+q.length))+'</b>'+esc(name.slice(i+q.length));
+}
+
+/* Öğrenilen ürünler: kullanıcının elle yazıp listede olmayanları hatırla */
+let learned=[]; try{ learned=JSON.parse(Store.get('sl_learned')||'[]')||[]; }catch(e){ learned=[]; }
+learned.forEach(p=>{ if(p&&p.name) ALL_PRODUCTS.push({name:p.name, cat:p.cat||null}); });
+function findCategory(name){ const n=norm(name); for(const p of ALL_PRODUCTS){ if(norm(p.name)===n) return p.cat; } return null; }
+function learn(name, cat){
+  const n=norm(name);
+  if(ALL_PRODUCTS.some(p=>norm(p.name)===n)) return;
+  const it={name, cat:cat||null}; learned.push(it); ALL_PRODUCTS.push(it);
+  try{ Store.set('sl_learned', JSON.stringify(learned)); }catch(e){}
+}
+const CAT_ICON={
+  "Kahvaltılık & Şarküteri":"🧀","Temel Gıda & Bakliyat":"🌾","Et & Süt Ürünleri":"🥩","Manav":"🥬",
+  "Fırın & Pastane":"🍞","Atıştırmalık & Kuruyemiş":"🥜","İçecekler":"🥤","Baharat & Bitki Çayları":"🌿",
+  "Temizlik":"🧽","Kişisel Bakım & Kozmetik":"🧴","Mutfak & Pişirme":"🍳"
+};
+/* Ürünleri kategoriye göre grupla (PRODUCTS sırası + en sonda Diğer) */
+function groupItems(items){
+  const map=new Map();
+  items.forEach(it=>{ const k=it.cat||'__other__'; if(!map.has(k))map.set(k,[]); map.get(k).push(it); });
+  const keys=Object.keys(PRODUCTS).filter(k=>map.has(k));
+  if(map.has('__other__')) keys.push('__other__');
+  return keys.map(k=>({ key:k, label:k==='__other__'?'Diğer':k, icon:k==='__other__'?'📝':(CAT_ICON[k]||'•'), items:map.get(k) }));
+}
+
+/* ---------- Toast ---------- */
+const toast=document.getElementById('toast');
+function showToast(msg){ toast.textContent=msg; toast.classList.add('show'); clearTimeout(toast._t);
+  toast._t=setTimeout(()=>toast.classList.remove('show'),1600); if(navigator.vibrate)navigator.vibrate(8); }
+
+/* ---------- Görünüm geçişi ---------- */
+const viewList=document.getElementById('viewList'), viewHist=document.getElementById('viewHist'),
+      tabList=document.getElementById('tabList'), tabHist=document.getElementById('tabHist'),
+      footer=document.getElementById('footer');
+let view='list';
+function setView(v){
+  view=v;
+  const isList = v==='list';
+  tabList.classList.toggle('on',isList); tabHist.classList.toggle('on',!isList);
+  viewList.hidden=!isList; viewHist.hidden=isList; footer.hidden=!isList;
+  if(isList) renderList(); else renderHist();
+}
+tabList.onclick=()=>setView('list');
+tabHist.onclick=()=>setView('hist');
+
+/* ---------- Aktif liste ---------- */
+const listName=document.getElementById('listName'), itemInput=document.getElementById('itemInput'),
+      itemList=document.getElementById('itemList'), listEmpty=document.getElementById('listEmpty'),
+      progress=document.getElementById('progress'), clearBtn=document.getElementById('clearBtn'),
+      completeBtn=document.getElementById('completeBtn'),
+      newListBtn=document.getElementById('newListBtn'), shareActiveBtn=document.getElementById('shareActiveBtn');
+
+newListBtn.onclick=()=>{
+  if(active.items.length && !confirm('Mevcut liste temizlenip yeni liste oluşturulsun mu?')) return;
+  active={ title:generateListName(), items:[] };
+  saveActive(); listName.value=active.title; renderList();
+  showToast('Yeni liste oluşturuldu'); itemInput.focus();
+};
+
+shareActiveBtn.onclick=()=>{
+  if(!active.items.length){ showToast('Liste boş'); return; }
+  shareWhatsApp(buildShareText({title:active.title, items:active.items}));
+};
+
+listName.value = active.title||'';
+listName.addEventListener('input', ()=>{ active.title=listName.value; saveActive(); });
+
+function addItem(name, cat){
+  name=name.trim(); if(!name) return;
+  if(cat===undefined){ // elle eklendi → kategoriyi bul, yoksa öğren
+    cat=findCategory(name);
+    const sel = catSelect ? catSelect.value : '';
+    if(cat===null){ if(sel) cat=sel; learn(name, cat); }
+  }
+  active.items.push({id:uid(), name, checked:false, cat:cat||null});
+  saveActive(); renderList();
+}
+document.getElementById('addBtn').onclick=()=>{ addItem(itemInput.value); itemInput.value=''; hideSuggest(); itemInput.focus(); };
+itemInput.addEventListener('keydown', e=>{ if(e.key==='Enter'){ addItem(itemInput.value); itemInput.value=''; hideSuggest(); } });
+
+/* --- Ürün önerileri: kategori (isteğe bağlı) + 3. harften sonra --- */
+const catSelect=document.getElementById('catSelect'), suggest=document.getElementById('suggest');
+Object.keys(PRODUCTS).forEach(cat=>{ const o=document.createElement('option'); o.value=cat; o.textContent=cat; catSelect.appendChild(o); });
+function hideSuggest(){ suggest.hidden=true; suggest.innerHTML=''; }
+function renderSuggestions(){
+  const q=itemInput.value.trim();
+  if(q.length<3){ hideSuggest(); return; }
+  const nq=norm(q), cat=catSelect.value;
+  const pool = cat ? ALL_PRODUCTS.filter(p=>p.cat===cat) : ALL_PRODUCTS;
+  const top = pool.filter(p=>norm(p.name).includes(nq))
+    .sort((a,b)=>{ const A=norm(a.name).startsWith(nq)?0:1, B=norm(b.name).startsWith(nq)?0:1; return A-B || a.name.localeCompare(b.name,'tr'); })
+    .slice(0,8);
+  if(!top.length){ hideSuggest(); return; }
+  suggest.innerHTML = top.map(p=>`<div class="sug" data-name="${esc(p.name)}" data-cat="${esc(p.cat||'')}">${highlight(p.name,q)}</div>`).join('');
+  suggest.hidden=false;
+  suggest.querySelectorAll('.sug').forEach(el=>{
+    el.onclick=()=>{ addItem(el.getAttribute('data-name'), el.getAttribute('data-cat')||null); itemInput.value=''; hideSuggest(); itemInput.focus(); };
+  });
+}
+itemInput.addEventListener('input', renderSuggestions);
+itemInput.addEventListener('focus', renderSuggestions);
+itemInput.addEventListener('blur', ()=>setTimeout(hideSuggest,200));
+catSelect.addEventListener('change', ()=>{ renderSuggestions(); itemInput.focus(); });
+
+clearBtn.onclick=()=>{
+  if(active.items.length && confirm('Tüm ürünler listeden silinsin mi?')){
+    active.items=[]; saveActive(); renderList();
+  }
+};
+
+function renderList(){
+  const n=active.items.length, done=active.items.filter(i=>i.checked).length;
+  listEmpty.hidden = n>0; itemList.hidden = n===0;
+  clearBtn.hidden = n===0;
+  progress.innerHTML = n? `<b>${done}</b> / ${n} alındı` : '';
+  completeBtn.disabled = n===0;
+  shareActiveBtn.disabled = n===0;
+
+  itemList.innerHTML='';
+  if(n===0) return;
+  const groups=groupItems(active.items);
+  const single = groups.length===1 && groups[0].key==='__other__';
+  groups.forEach(g=>{
+    const wrap=document.createElement('div'); wrap.className='group';
+    if(!single){
+      const gdone=g.items.filter(i=>i.checked).length;
+      const head=document.createElement('div'); head.className='group-head';
+      head.innerHTML=`<span>${g.icon} ${esc(g.label)}</span><span class="group-count">${gdone}/${g.items.length}</span>`;
+      wrap.appendChild(head);
+    }
+    const ul=document.createElement('ul'); ul.className='items glass';
+    g.items.forEach(it=> ul.appendChild(buildItemLi(it)));
+    wrap.appendChild(ul);
+    itemList.appendChild(wrap);
+  });
+}
+function buildItemLi(it){
+  const li=document.createElement('li');
+  li.className='item'+(it.checked?' done':'');
+  li.innerHTML=`
+    <div class="row-main" data-act="toggle">
+      <div class="chk"><svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg></div>
+      <span class="name">${esc(it.name)}</span>
+    </div>
+    <button class="edit" data-act="edit" aria-label="Düzenle"><svg viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg></button>
+    <button class="del" data-act="del" aria-label="Sil"><svg viewBox="0 0 24 24"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m2 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M10 11v6M14 11v6"/></svg></button>`;
+  li.querySelector('.row-main').onclick=()=>{ it.checked=!it.checked; saveActive(); renderList(); };
+  li.querySelector('.edit').onclick=()=>{ const span=li.querySelector('.name'); if(span) startEdit(span, it); };
+  li.querySelector('.del').onclick=()=>{ active.items=active.items.filter(x=>x.id!==it.id); saveActive(); renderList(); };
+  return li;
+}
+
+function startEdit(span, it){
+  const inp=document.createElement('input');
+  inp.className='name-edit'; inp.value=it.name; inp.maxLength=80;
+  inp.onclick=e=>e.stopPropagation(); // satır işaretlemeyi tetikleme
+  span.replaceWith(inp); inp.focus(); inp.setSelectionRange(inp.value.length, inp.value.length);
+  const commit=()=>{ const v=inp.value.trim(); if(v){ it.name=v; } saveActive(); renderList(); };
+  inp.addEventListener('blur', commit);
+  inp.addEventListener('keydown', e=>{
+    if(e.key==='Enter'){ inp.blur(); }
+    if(e.key==='Escape'){ inp.removeEventListener('blur', commit); renderList(); }
+  });
+}
+
+/* ---------- Tamamlama ---------- */
+const scrim=document.getElementById('scrim'), sheet=document.getElementById('sheet'), totalInput=document.getElementById('totalInput');
+function openSheet(){ totalInput.value=''; scrim.classList.add('show'); sheet.classList.add('show'); }
+function closeSheet(){ scrim.classList.remove('show'); sheet.classList.remove('show'); }
+completeBtn.onclick=()=>{
+  if(!active.items.length) return;
+  const done=active.items.filter(i=>i.checked).length;
+  if(done===0 && !confirm('Hiçbir ürün işaretlenmedi. Yine de tamamlansın mı?')) return;
+  openSheet();
+};
+document.getElementById('cancelBtn').onclick=closeSheet;
+scrim.onclick=()=>{ closeSheet(); closeExportSheet(); };
+totalInput.addEventListener('keydown', e=>{ if(e.key==='Enter') document.getElementById('saveBtn').click(); });
+
+document.getElementById('saveBtn').onclick=()=>{
+  const rec={
+    id:uid(), date:Date.now(), title:(active.title||'').trim(),
+    items:active.items.map(i=>({name:i.name, checked:i.checked, cat:i.cat||null})),
+    total:parseMoney(totalInput.value)
+  };
+  history.unshift(rec); saveHist();
+  active={title:'', items:[]}; saveActive(); listName.value='';
+  closeSheet(); showToast('Alışveriş kaydedildi ✓');
+  setView('hist');
+};
+
+/* ---------- Geçmiş ---------- */
+const histList=document.getElementById('histList'), histEmpty=document.getElementById('histEmpty');
+function renderHist(){
+  histEmpty.hidden = history.length>0; histList.hidden = history.length===0;
+  histList.innerHTML='';
+  history.forEach(rec=>{
+    const done=rec.items.filter(i=>i.checked).length;
+    const money=fmtMoney(rec.total);
+    const card=document.createElement('div');
+    card.className='rec glass';
+    card.innerHTML=`
+      <div class="rec-top">
+        <div>
+          <div class="rec-date">${esc(fmtDate(rec.date))}</div>
+          ${rec.title?`<div class="rec-title">${esc(rec.title)}</div>`:''}
+        </div>
+        ${money?`<div class="rec-total">${esc(money)}</div>`:`<div class="rec-total none">Tutar yok</div>`}
+      </div>
+      <div class="rec-count">${rec.items.length} ürün · ${done} alındı</div>
+      <div class="rec-items">
+        ${rec.items.map(i=>`<span class="tag${i.checked?' done':''}">${esc(i.name)}</span>`).join('')}
+      </div>
+      <div class="rec-actions">
+        <button class="act-load" data-act="load"><svg viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-3-6.7L21 8"/><path d="M21 3v5h-5"/></svg>Tekrar Yükle</button>
+        <button class="act-share" data-act="share"><svg viewBox="0 0 24 24"><path d="M12.04 2c-5.46 0-9.91 4.45-9.91 9.91 0 1.75.46 3.45 1.32 4.95L2 22l5.25-1.38c1.45.79 3.08 1.21 4.79 1.21h.01c5.46 0 9.91-4.45 9.91-9.91 0-2.65-1.03-5.14-2.91-7.01A9.82 9.82 0 0 0 12.04 2zm5.8 14.01c-.24.68-1.42 1.32-1.96 1.36-.5.06-1.14.08-1.84-.11-.42-.13-.97-.31-1.67-.61-2.94-1.27-4.86-4.23-5.01-4.43-.14-.2-1.19-1.58-1.19-3.01 0-1.44.75-2.14 1.02-2.44.27-.3.59-.37.79-.37h.56c.18 0 .42-.07.66.5.24.6.83 2.06.9 2.21.07.15.12.32.02.52-.44.86-.9.83-.66 1.24.9 1.55 1.95 2.06 2.4 2.32.3.15.5.13.68-.07.18-.2.75-.87.95-1.17.2-.3.4-.25.66-.15.27.1 1.72.81 2.01.96.3.15.5.22.57.35.07.13.07.72-.17 1.4z"/></svg>WhatsApp</button>
+        <button class="act-pdf" data-act="pdf"><svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 15V3"/></svg>PDF İndir</button>
+        <button class="act-del" data-act="del"><svg viewBox="0 0 24 24"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m2 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg>Sil</button>
+      </div>`;
+    card.querySelector('[data-act="load"]').onclick=()=>loadTemplate(rec);
+    card.querySelector('[data-act="share"]').onclick=()=>shareWhatsApp(buildShareText({title:rec.title, items:rec.items, date:rec.date, total:rec.total}));
+    card.querySelector('[data-act="pdf"]').onclick=()=>exportPDF(rec);
+    card.querySelector('[data-act="del"]').onclick=()=>{
+      if(confirm('Bu kayıt silinsin mi?')){ history=history.filter(x=>x.id!==rec.id); saveHist(); renderHist(); }
+    };
+    histList.appendChild(card);
+  });
+}
+
+/* Tekrar yükle: kaydı yeni aktif liste olarak açar (eski kayıt bozulmaz) */
+function loadTemplate(rec){
+  if(active.items.length && !confirm('Aktif listenin üzerine bu kayıt yüklensin mi?')) return;
+  active={ title:rec.title||'', items:rec.items.map(i=>({id:uid(), name:i.name, checked:false, cat:i.cat||null})) };
+  saveActive(); listName.value=active.title;
+  setView('list'); showToast('Liste yüklendi');
+}
+
+/* ---------- JSON dışa/içe aktarma (yedek + eşle paylaşım) ---------- */
+const exportBtn=document.getElementById('exportBtn'), importBtn=document.getElementById('importBtn'), importFile=document.getElementById('importFile');
+
+function exportData(scope){
+  const data = (scope==='active')
+    ? { app:'alisveris', version:1, type:'active', exportedAt:Date.now(), active }
+    : { app:'alisveris', version:1, type:'full', exportedAt:Date.now(), active, history, learned };
+  const json=JSON.stringify(data, null, 2);
+  const fname=(scope==='active'?'alisveris-liste-':'alisveris-yedek-')+new Date().toISOString().slice(0,10)+'.json';
+  const label=(scope==='active'?'Aktif alışveriş listesi':'Alışveriş yedeği');
+  const blob=new Blob([json], {type:'application/json'});
+  try{
+    const file=new File([blob], fname, {type:'application/json'});
+    if(navigator.canShare && navigator.canShare({files:[file]})){
+      navigator.share({ files:[file], title:label, text:label+' (JSON)' }).catch(()=>{});
+      return;
+    }
+  }catch(e){}
+  // yedek: indir
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a'); a.href=url; a.download=fname;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url), 1500);
+  showToast('JSON dosyası indirildi');
+}
+
+function applyImport(data){
+  if(!data || typeof data!=='object' || (data.app && data.app!=='alisveris')){ showToast('Geçersiz dosya'); return; }
+  let addH=0, addL=0;
+  // Geçmiş: id'ye göre birleştir (tekrar yok)
+  if(Array.isArray(data.history)){
+    const ids=new Set(history.map(r=>r.id));
+    data.history.forEach(r=>{ if(r&&r.id&&!ids.has(r.id)){ history.push(r); ids.add(r.id); addH++; } });
+    history.sort((a,b)=>(b.date||0)-(a.date||0)); saveHist();
+  }
+  // Öğrenilen ürünler: isme göre birleştir
+  if(Array.isArray(data.learned)){
+    data.learned.forEach(p=>{ if(p&&p.name){ const n=norm(p.name);
+      if(!ALL_PRODUCTS.some(x=>norm(x.name)===n)){ const it={name:p.name,cat:p.cat||null}; learned.push(it); ALL_PRODUCTS.push(it); addL++; } } });
+    try{ Store.set('sl_learned', JSON.stringify(learned)); }catch(e){}
+  }
+  // Aktif liste: onayla, mevcut listenin yerine geçsin
+  const imp=data.active; let replacedActive=false;
+  if(imp && Array.isArray(imp.items) && imp.items.length){
+    const cur=active.items.length;
+    const alsoMerge = Array.isArray(data.history)||Array.isArray(data.learned);
+    const replace = cur===0 || confirm(`İçe aktarılan liste (${imp.items.length} ürün) şu anki listenin (${cur} ürün) yerine yüklensin mi?\n\n"İptal": ${alsoMerge?'sadece geçmiş ve öğrenilenler birleştirilir.':'içe aktarma yapılmaz.'}`);
+    if(replace){
+      active={ title:imp.title||'', items:imp.items.map(i=>({id:uid(), name:i.name, checked:!!i.checked, cat:i.cat||null})) };
+      saveActive(); listName.value=active.title; replacedActive=true;
+    }
+  }
+  renderList(); renderHist();
+  const parts=[];
+  if(replacedActive) parts.push('liste');
+  if(addH) parts.push('+'+addH+' kayıt');
+  if(addL) parts.push('+'+addL+' ürün');
+  showToast(parts.length ? ('İçe aktarıldı ✓  '+parts.join(', ')) : 'Değişiklik yok');
+}
+
+const exportSheet=document.getElementById('exportSheet');
+function openExportSheet(){ scrim.classList.add('show'); exportSheet.classList.add('show'); }
+function closeExportSheet(){ scrim.classList.remove('show'); exportSheet.classList.remove('show'); }
+exportBtn.onclick=openExportSheet;
+document.getElementById('expActive').onclick=()=>{ closeExportSheet(); exportData('active'); };
+document.getElementById('expAll').onclick=()=>{ closeExportSheet(); exportData('all'); };
+document.getElementById('expCancel').onclick=closeExportSheet;
+importBtn.onclick=()=>importFile.click();
+importFile.onchange=()=>{
+  const f=importFile.files && importFile.files[0];
+  if(!f){ return; }
+  const reader=new FileReader();
+  reader.onload=()=>{ try{ applyImport(JSON.parse(reader.result)); }catch(e){ showToast('Geçersiz JSON dosyası'); } importFile.value=''; };
+  reader.onerror=()=>{ showToast('Dosya okunamadı'); importFile.value=''; };
+  reader.readAsText(f);
+};
+
+/* ---------- PDF ---------- */
+function buildPrintableHTML(rec){
+  const done=rec.items.filter(i=>i.checked).length;
+  const money=fmtMoney(rec.total);
+  const groups=groupItems(rec.items);
+  const single = groups.length===1 && groups[0].key==='__other__';
+  const body=groups.map(g=>{
+    const head = single?'':`<tr><td colspan="2" style="padding:13px 6px 5px;font-size:12px;font-weight:800;color:#248A3D">${g.icon} ${esc(g.label)}</td></tr>`;
+    const rows=g.items.map(i=>`
+      <tr>
+        <td style="width:26px;text-align:center;font-size:15px;color:${i.checked?'#248A3D':'#c9c9cf'}">${i.checked?'✓':'○'}</td>
+        <td style="padding:7px 6px;font-size:14px;color:${i.checked?'#1c1c1e':'#8a8a90'};${i.checked?'':'text-decoration:line-through'}">${esc(i.name)}</td>
+      </tr>`).join('');
+    return head+rows;
+  }).join('');
+  return `
+  <div style="font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;color:#1c1c1e;padding:28px 30px;width:100%;box-sizing:border-box">
+    <div style="display:flex;align-items:center;gap:10px;border-bottom:2px solid #34C759;padding-bottom:12px;margin-bottom:16px">
+      <div style="width:30px;height:30px;border-radius:8px;background:#34C759;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800">🛒</div>
+      <div>
+        <div style="font-size:19px;font-weight:800;">Alışveriş Listesi</div>
+        <div style="font-size:12px;color:#6c6c70">${esc(fmtDate(rec.date))}</div>
+      </div>
+    </div>
+    ${rec.title?`<div style="font-size:14px;margin-bottom:10px"><b>Liste:</b> ${esc(rec.title)}</div>`:''}
+    <table style="width:100%;border-collapse:collapse">${body}</table>
+    <div style="margin-top:16px;padding-top:12px;border-top:1px solid #e3e3e8;display:flex;justify-content:space-between;font-size:13px;color:#6c6c70">
+      <span>${rec.items.length} ürün · ${done} alındı</span>
+      ${money?`<span style="font-size:16px;font-weight:800;color:#248A3D">Toplam: ${esc(money)}</span>`:''}
+    </div>
+  </div>`;
+}
+
+function exportPDF(rec){
+  const filename = 'alisveris-'+new Date(rec.date).toISOString().slice(0,10)+'.pdf';
+  const html = buildPrintableHTML(rec);
+  if(typeof html2pdf!=='undefined'){
+    const holder=document.createElement('div');
+    holder.style.cssText='position:fixed;left:-10000px;top:0;width:794px;background:#fff';
+    holder.innerHTML=html; document.body.appendChild(holder);
+    html2pdf().set({
+      margin:[10,8,12,8], filename, image:{type:'jpeg',quality:.98},
+      html2canvas:{scale:2,useCORS:true,backgroundColor:'#ffffff'},
+      jsPDF:{unit:'mm',format:'a4',orientation:'portrait'}
+    }).from(holder).save().then(()=>holder.remove()).catch(()=>{ holder.remove(); printFallback(html); });
+  }else{
+    printFallback(html);
+  }
+}
+/* html2pdf yoksa: yazdırma penceresi → "PDF olarak kaydet" */
+function printFallback(html){
+  const w=window.open('', '_blank');
+  if(!w){ showToast('PDF için açılır pencereye izin ver'); return; }
+  w.document.open();
+  w.document.write('<!doctype html><html><head><meta charset="utf-8"><title>Alışveriş</title>'+
+    '<style>@media print{@page{margin:12mm}} body{margin:0}</style></head><body>'+html+'</body></html>');
+  w.document.close();
+  const doPrint=()=>{ try{ w.focus(); w.print(); }catch(e){} };
+  if(w.document.readyState==='complete'){ setTimeout(doPrint,300); }
+  else { w.onload=()=>setTimeout(doPrint,300); }
+}
+
+/* ---------- Başlat ---------- */
+renderList();
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', ()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));
+}
+</script>
+</body>
+</html>
